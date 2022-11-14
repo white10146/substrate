@@ -24,9 +24,7 @@ pub mod warp;
 
 use libp2p::PeerId;
 use message::{BlockAnnounce, BlockData, BlockRequest, BlockResponse};
-use sc_consensus::{
-	import_queue::RuntimeOrigin, BlockImportError, BlockImportStatus, IncomingBlock,
-};
+use sc_consensus::IncomingBlock;
 use sp_consensus::BlockOrigin;
 use sp_runtime::{
 	traits::{Block as BlockT, NumberFor},
@@ -100,17 +98,6 @@ impl fmt::Display for BadPeer {
 
 impl std::error::Error for BadPeer {}
 
-/// Result of [`ChainSync::on_block_data`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OnBlockData<Block: BlockT> {
-	/// The block should be imported.
-	Import(BlockOrigin, Vec<IncomingBlock<Block>>),
-	/// A new block request needs to be made to the given peer.
-	Request(PeerId, BlockRequest<Block>),
-	/// Continue processing events.
-	Continue,
-}
-
 /// Result of [`ChainSync::on_block_justification`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OnBlockJustification<Block: BlockT> {
@@ -134,17 +121,10 @@ pub enum OnStateData<Block: BlockT> {
 	Continue,
 }
 
-/// Block or justification request polled from `ChainSync`
-#[derive(Debug)]
-pub enum ImportResult<B: BlockT> {
-	BlockImport(BlockOrigin, Vec<IncomingBlock<B>>),
-	JustificationImport(RuntimeOrigin, B::Hash, NumberFor<B>, Justifications),
-}
-
+// TODO: remove
 /// Value polled from `ChainSync`
 #[derive(Debug)]
 pub enum PollResult<B: BlockT> {
-	Import(ImportResult<B>),
 	Announce(PollBlockAnnounceValidation<B::Header>),
 }
 
@@ -308,14 +288,13 @@ pub trait ChainSync<Block: BlockT>: Send {
 	/// `request` must be the original request that triggered `response`.
 	/// or `None` if data comes from the block announcement.
 	///
-	/// If this corresponds to a valid block, this outputs the block that
-	/// must be imported in the import queue.
+	/// If this corresponds to a valid block, the block is imported
 	fn on_block_data(
 		&mut self,
 		who: &PeerId,
 		request: Option<BlockRequest<Block>>,
 		response: BlockResponse<Block>,
-	) -> Result<OnBlockData<Block>, BadPeer>;
+	);
 
 	/// Handle a response from the remote to a justification request that we made.
 	///
@@ -325,26 +304,6 @@ pub trait ChainSync<Block: BlockT>: Send {
 		who: PeerId,
 		response: BlockResponse<Block>,
 	) -> Result<OnBlockJustification<Block>, BadPeer>;
-
-	/// A batch of blocks have been processed, with or without errors.
-	///
-	/// Call this when a batch of blocks have been processed by the import
-	/// queue, with or without errors.
-	fn on_blocks_processed(
-		&mut self,
-		imported: usize,
-		count: usize,
-		results: Vec<(Result<BlockImportStatus<NumberFor<Block>>, BlockImportError>, Block::Hash)>,
-	) -> Box<dyn Iterator<Item = Result<(PeerId, BlockRequest<Block>), BadPeer>>>;
-
-	/// Call this when a justification has been processed by the import queue,
-	/// with or without errors.
-	fn on_justification_import(
-		&mut self,
-		hash: Block::Hash,
-		number: NumberFor<Block>,
-		success: bool,
-	);
 
 	/// Notify about finalization of the given block.
 	fn on_block_finalized(&mut self, hash: &Block::Hash, number: NumberFor<Block>);
@@ -377,8 +336,8 @@ pub trait ChainSync<Block: BlockT>: Send {
 
 	/// Call when a peer has disconnected.
 	/// Canceled obsolete block request may result in some blocks being ready for
-	/// import, so this functions checks for such blocks and returns them.
-	fn peer_disconnected(&mut self, who: &PeerId) -> Option<OnBlockData<Block>>;
+	/// import, so this functions checks for such blocks and imports them.
+	fn peer_disconnected(&mut self, who: &PeerId);
 
 	/// Return some key metrics.
 	fn metrics(&self) -> Metrics;

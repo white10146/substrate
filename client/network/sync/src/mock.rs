@@ -21,11 +21,10 @@
 
 use futures::task::Poll;
 use libp2p::PeerId;
-use sc_consensus::{BlockImportError, BlockImportStatus};
 use sc_network_common::sync::{
 	message::{BlockAnnounce, BlockData, BlockRequest, BlockResponse},
-	BadPeer, ChainSync as ChainSyncT, Metrics, OnBlockData, OnBlockJustification,
-	OpaqueBlockResponse, PeerInfo, PollBlockAnnounceValidation, PollResult, SyncStatus,
+	BadPeer, ChainSync as ChainSyncT, Metrics, OnBlockJustification, OpaqueBlockResponse, PeerInfo,
+	PollBlockAnnounceValidation, PollResult, SyncStatus,
 };
 use sp_runtime::traits::{Block as BlockT, NumberFor};
 
@@ -59,24 +58,12 @@ mockall::mock! {
 			who: &PeerId,
 			request: Option<BlockRequest<Block>>,
 			response: BlockResponse<Block>,
-		) -> Result<OnBlockData<Block>, BadPeer>;
+		);
 		fn on_block_justification(
 			&mut self,
 			who: PeerId,
 			response: BlockResponse<Block>,
 		) -> Result<OnBlockJustification<Block>, BadPeer>;
-		fn on_blocks_processed(
-			&mut self,
-			imported: usize,
-			count: usize,
-			results: Vec<(Result<BlockImportStatus<NumberFor<Block>>, BlockImportError>, Block::Hash)>,
-		) -> Box<dyn Iterator<Item = Result<(PeerId, BlockRequest<Block>), BadPeer>>>;
-		fn on_justification_import(
-			&mut self,
-			hash: Block::Hash,
-			number: NumberFor<Block>,
-			success: bool,
-		);
 		fn on_block_finalized(&mut self, hash: &Block::Hash, number: NumberFor<Block>);
 		fn push_block_announce_validation(
 			&mut self,
@@ -89,7 +76,7 @@ mockall::mock! {
 			&mut self,
 			cx: &mut std::task::Context<'a>,
 		) -> Poll<PollBlockAnnounceValidation<Block::Header>>;
-		fn peer_disconnected(&mut self, who: &PeerId) -> Option<OnBlockData<Block>>;
+		fn peer_disconnected(&mut self, who: &PeerId);
 		fn metrics(&self) -> Metrics;
 		fn block_response_into_blocks(
 			&self,
