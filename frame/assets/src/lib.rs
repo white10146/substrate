@@ -140,7 +140,6 @@ mod impl_stored_map;
 mod types;
 pub use types::*;
 
-use codec::HasCompact;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
@@ -195,14 +194,7 @@ pub mod pallet {
 			+ TypeInfo;
 
 		/// Identifier for the class of asset.
-		type AssetId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen
-			+ TypeInfo;
+		type AssetId: Member + Parameter + Copy + MaybeSerializeDeserialize + MaxEncodedLen;
 
 		/// The currency mechanism.
 		type Currency: ReservableCurrency<Self::AccountId>;
@@ -512,7 +504,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::create())]
 		pub fn create(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			admin: AccountIdLookupOf<T>,
 			min_balance: T::Balance,
 		) -> DispatchResult {
@@ -568,7 +560,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::force_create())]
 		pub fn force_create(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			owner: AccountIdLookupOf<T>,
 			is_sufficient: bool,
 			#[pallet::compact] min_balance: T::Balance,
@@ -603,7 +595,7 @@ pub mod pallet {
  		))]
 		pub fn destroy(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			witness: DestroyWitness,
 		) -> DispatchResultWithPostInfo {
 			let maybe_check_owner = match T::ForceOrigin::try_origin(origin) {
@@ -634,7 +626,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			beneficiary: AccountIdLookupOf<T>,
 			#[pallet::compact] amount: T::Balance,
 		) -> DispatchResult {
@@ -662,7 +654,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			who: AccountIdLookupOf<T>,
 			#[pallet::compact] amount: T::Balance,
 		) -> DispatchResult {
@@ -695,7 +687,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			target: AccountIdLookupOf<T>,
 			#[pallet::compact] amount: T::Balance,
 		) -> DispatchResult {
@@ -727,7 +719,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::transfer_keep_alive())]
 		pub fn transfer_keep_alive(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			target: AccountIdLookupOf<T>,
 			#[pallet::compact] amount: T::Balance,
 		) -> DispatchResult {
@@ -760,7 +752,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::force_transfer())]
 		pub fn force_transfer(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			source: AccountIdLookupOf<T>,
 			dest: AccountIdLookupOf<T>,
 			#[pallet::compact] amount: T::Balance,
@@ -786,7 +778,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::freeze())]
 		pub fn freeze(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			who: AccountIdLookupOf<T>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
@@ -817,7 +809,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::thaw())]
 		pub fn thaw(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			who: AccountIdLookupOf<T>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
@@ -845,10 +837,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::freeze_asset())]
-		pub fn freeze_asset(
-			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
-		) -> DispatchResult {
+		pub fn freeze_asset(origin: OriginFor<T>, id: T::AssetId) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
 			Asset::<T, I>::try_mutate(id, |maybe_details| {
@@ -872,10 +861,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::thaw_asset())]
-		pub fn thaw_asset(
-			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
-		) -> DispatchResult {
+		pub fn thaw_asset(origin: OriginFor<T>, id: T::AssetId) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
 			Asset::<T, I>::try_mutate(id, |maybe_details| {
@@ -902,7 +888,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::transfer_ownership())]
 		pub fn transfer_ownership(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			owner: AccountIdLookupOf<T>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
@@ -943,7 +929,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_team())]
 		pub fn set_team(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			issuer: AccountIdLookupOf<T>,
 			admin: AccountIdLookupOf<T>,
 			freezer: AccountIdLookupOf<T>,
@@ -985,7 +971,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_metadata(name.len() as u32, symbol.len() as u32))]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
 			decimals: u8,
@@ -1006,10 +992,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::clear_metadata())]
-		pub fn clear_metadata(
-			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
-		) -> DispatchResult {
+		pub fn clear_metadata(origin: OriginFor<T>, id: T::AssetId) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
 			let d = Asset::<T, I>::get(id).ok_or(Error::<T, I>::Unknown)?;
@@ -1040,7 +1023,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::force_set_metadata(name.len() as u32, symbol.len() as u32))]
 		pub fn force_set_metadata(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
 			decimals: u8,
@@ -1088,10 +1071,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::weight(T::WeightInfo::force_clear_metadata())]
-		pub fn force_clear_metadata(
-			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
-		) -> DispatchResult {
+		pub fn force_clear_metadata(origin: OriginFor<T>, id: T::AssetId) -> DispatchResult {
 			T::ForceOrigin::ensure_origin(origin)?;
 
 			let d = Asset::<T, I>::get(id).ok_or(Error::<T, I>::Unknown)?;
@@ -1128,7 +1108,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::force_asset_status())]
 		pub fn force_asset_status(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			owner: AccountIdLookupOf<T>,
 			issuer: AccountIdLookupOf<T>,
 			admin: AccountIdLookupOf<T>,
@@ -1178,7 +1158,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::approve_transfer())]
 		pub fn approve_transfer(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			delegate: AccountIdLookupOf<T>,
 			#[pallet::compact] amount: T::Balance,
 		) -> DispatchResult {
@@ -1203,7 +1183,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::cancel_approval())]
 		pub fn cancel_approval(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			delegate: AccountIdLookupOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
@@ -1236,7 +1216,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::force_cancel_approval())]
 		pub fn force_cancel_approval(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			owner: AccountIdLookupOf<T>,
 			delegate: AccountIdLookupOf<T>,
 		) -> DispatchResult {
@@ -1283,7 +1263,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::transfer_approved())]
 		pub fn transfer_approved(
 			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
+			id: T::AssetId,
 			owner: AccountIdLookupOf<T>,
 			destination: AccountIdLookupOf<T>,
 			#[pallet::compact] amount: T::Balance,
@@ -1304,7 +1284,7 @@ pub mod pallet {
 		///
 		/// Emits `Touched` event when successful.
 		#[pallet::weight(T::WeightInfo::mint())]
-		pub fn touch(origin: OriginFor<T>, #[pallet::compact] id: T::AssetId) -> DispatchResult {
+		pub fn touch(origin: OriginFor<T>, id: T::AssetId) -> DispatchResult {
 			Self::do_touch(id, ensure_signed(origin)?)
 		}
 
@@ -1317,11 +1297,7 @@ pub mod pallet {
 		///
 		/// Emits `Refunded` event when successful.
 		#[pallet::weight(T::WeightInfo::mint())]
-		pub fn refund(
-			origin: OriginFor<T>,
-			#[pallet::compact] id: T::AssetId,
-			allow_burn: bool,
-		) -> DispatchResult {
+		pub fn refund(origin: OriginFor<T>, id: T::AssetId, allow_burn: bool) -> DispatchResult {
 			Self::do_refund(id, ensure_signed(origin)?, allow_burn)
 		}
 	}
