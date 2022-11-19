@@ -168,6 +168,8 @@ impl pallet_assets::Config for Runtime {
 	type Freezer = ();
 	type Extra = ();
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 pub struct HardcodedAuthor;
