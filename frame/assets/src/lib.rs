@@ -176,6 +176,17 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T, I = ()>(_);
 
+	#[cfg(feature = "runtime-benchmarks")]
+	pub trait BenchmarkHelper<AssetId> {
+		fn create_asset_id(id: u32) -> AssetId;
+	}
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<AssetId: From<u32>> BenchmarkHelper<AssetId> for () {
+		fn create_asset_id(id: u32) -> AssetId {
+			id.into()
+		}
+	}
+
 	#[pallet::config]
 	/// The module configuration trait.
 	pub trait Config<I: 'static = ()>: frame_system::Config {
@@ -246,6 +257,10 @@ pub mod pallet {
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
+
+		/// Helper trait for benchmarks.
+		#[cfg(feature = "runtime-benchmarks")]
+		type Helper: BenchmarkHelper<Self::AssetId>;
 	}
 
 	#[pallet::storage]

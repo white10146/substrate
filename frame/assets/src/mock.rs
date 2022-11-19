@@ -100,6 +100,8 @@ impl Config for Test {
 	type Freezer = TestFreezer;
 	type WeightInfo = ();
 	type Extra = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 use std::collections::HashMap;
