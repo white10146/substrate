@@ -85,6 +85,7 @@ fn swap_is_sufficient<T: Config<I>, I: 'static>(s: &mut bool) {
 }
 
 fn add_consumers<T: Config<I>, I: 'static>(minter: T::AccountId, n: u32) {
+	let asset_id = default_asset_id::<T, I>();
 	let origin = SystemOrigin::Signed(minter);
 	let mut s = false;
 	swap_is_sufficient::<T, I>(&mut s);
@@ -94,7 +95,7 @@ fn add_consumers<T: Config<I>, I: 'static>(minter: T::AccountId, n: u32) {
 		let target_lookup = T::Lookup::unlookup(target);
 		assert!(Assets::<T, I>::mint(
 			origin.clone().into(),
-			Default::default(),
+			asset_id,
 			target_lookup,
 			100u32.into()
 		)
@@ -176,14 +177,14 @@ benchmarks_instance_pallet! {
 		let c in 0 .. 5_000;
 		let s in 0 .. 5_000;
 		let a in 0 .. 5_00;
-		let (caller, _) = create_default_asset::<T, I>(true);
+		let (asset_id, caller, _) = create_default_asset::<T, I>(true);
 		add_consumers::<T, I>(caller.clone(), c);
 		add_sufficients::<T, I>(caller.clone(), s);
 		add_approvals::<T, I>(caller.clone(), a);
-		let witness = Asset::<T, I>::get(T::AssetId::default()).unwrap().destroy_witness();
-	}: _(SystemOrigin::Signed(caller), Default::default(), witness)
+		let witness = Asset::<T, I>::get(asset_id).unwrap().destroy_witness();
+	}: _(SystemOrigin::Signed(caller), asset_id, witness)
 	verify {
-		assert_last_event::<T, I>(Event::Destroyed { asset_id: Default::default() }.into());
+		assert_last_event::<T, I>(Event::Destroyed { asset_id }.into());
 	}
 
 	mint {
