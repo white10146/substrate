@@ -32,8 +32,13 @@ use sp_std::{marker::PhantomData, prelude::*};
 pub struct Migration<T: Config>(PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 	fn on_runtime_upgrade() -> Weight {
-		let version = StorageVersion::get::<Pallet<T>>();
+		let version = <Pallet<T>>::on_chain_storage_version();
 		let mut weight = Weight::zero();
+
+		log::info!(
+			target: "runtime::contracts", "Upgrading from {:?} to {:?}",
+			version, <Pallet<T>>::current_storage_version(),
+		);
 
 		if version < 4 {
 			weight = weight.saturating_add(v4::migrate::<T>());
