@@ -228,20 +228,14 @@ impl<T: Config> PrefabWasmModule<T> {
 		Ok((store, memory, instance))
 	}
 
-	/// Create and store the module without checking nor instrumenting the passed code.
-	///
-	/// # Note
-	///
-	/// This is useful for benchmarking where we don't want instrumentation to skew
-	/// our results. This also does not collect any deposit from the `owner`.
+	/// See [`Self::from_code_unchecked`].
 	#[cfg(feature = "runtime-benchmarks")]
 	pub fn store_code_unchecked(
 		original_code: Vec<u8>,
 		schedule: &Schedule<T>,
 		owner: T::AccountId,
 	) -> DispatchResult {
-		let executable = prepare::benchmarking::prepare(original_code, schedule, owner)
-			.map_err::<DispatchError, _>(Into::into)?;
+		let executable = Self::from_code_unchecked(original_code, schedule, owner)?;
 		code_cache::store(executable, false)
 	}
 
@@ -249,6 +243,23 @@ impl<T: Config> PrefabWasmModule<T> {
 	#[cfg(test)]
 	pub fn decrement_version(&mut self) {
 		self.instruction_weights_version = self.instruction_weights_version.checked_sub(1).unwrap();
+	}
+
+	/// Create the module without checking nor instrumenting the passed code.
+	///
+	/// # Note
+	///
+	/// This is useful for benchmarking where we don't want instrumentation to skew
+	/// our results. This also does not collect any deposit from the `owner`. Also useful
+	/// during testing when we want to deploy codes that do not pass the instantiation checks.
+	#[cfg(any(test, feature = "runtime-benchmarks"))]
+	fn from_code_unchecked(
+		original_code: Vec<u8>,
+		schedule: &Schedule<T>,
+		owner: T::AccountId,
+	) -> Result<Self, DispatchError> {
+		prepare::benchmarking::prepare(original_code, schedule, owner)
+			.map_err::<DispatchError, _>(Into::into)
 	}
 }
 
@@ -567,8 +578,11 @@ mod tests {
 		fn minimum_balance(&self) -> u64 {
 			666
 		}
-		fn random(&self, subject: &[u8]) -> (SeedOf<Self::T>, BlockNumberOf<Self::T>) {
-			(H256::from_slice(subject), 42)
+		fn random(
+			&self,
+			subject: &[u8],
+		) -> Result<(SeedOf<Self::T>, BlockNumberOf<Self::T>), DispatchError> {
+			Ok((H256::from_slice(subject), 42))
 		}
 		fn deposit_event(&mut self, topics: Vec<H256>, data: Vec<u8>) {
 			self.events.push((topics, data))
@@ -629,24 +643,29 @@ mod tests {
 		input_data: Vec<u8>,
 		mut ext: E,
 		unstable_interface: bool,
+		skip_checks: bool,
 	) -> ExecResult {
 		type RuntimeConfig = <MockExt as Ext>::T;
 		RuntimeConfig::set_unstable_interface(unstable_interface);
 		let wasm = wat::parse_str(wat).unwrap();
 		let schedule = crate::Schedule::default();
-		let executable = PrefabWasmModule::<RuntimeConfig>::from_code(
-			wasm,
-			&schedule,
-			ALICE,
-			Determinism::Deterministic,
-			TryInstantiate::Skip,
-		)
-		.map_err(|err| err.0)?;
+		let executable = if skip_checks {
+			PrefabWasmModule::<RuntimeConfig>::from_code_unchecked(wasm, &schedule, ALICE)?
+		} else {
+			PrefabWasmModule::<RuntimeConfig>::from_code(
+				wasm,
+				&schedule,
+				ALICE,
+				Determinism::Deterministic,
+				TryInstantiate::Skip,
+			)
+			.map_err(|err| err.0)?
+		};
 		executable.execute(ext.borrow_mut(), &ExportedFunction::Call, input_data)
 	}
 
 	fn execute<E: BorrowMut<MockExt>>(wat: &str, input_data: Vec<u8>, ext: E) -> ExecResult {
-		execute_internal(wat, input_data, ext, true)
+		execute_internal(wat, input_data, ext, true, false)
 	}
 
 	#[cfg(not(feature = "runtime-benchmarks"))]
@@ -655,7 +674,15 @@ mod tests {
 		input_data: Vec<u8>,
 		ext: E,
 	) -> ExecResult {
-		execute_internal(wat, input_data, ext, false)
+		execute_internal(wat, input_data, ext, false, false)
+	}
+
+	fn execute_unchecked<E: BorrowMut<MockExt>>(
+		wat: &str,
+		input_data: Vec<u8>,
+		ext: E,
+	) -> ExecResult {
+		execute_internal(wat, input_data, ext, false, true)
 	}
 
 	const CODE_TRANSFER: &str = r#"
@@ -1856,7 +1883,7 @@ mod tests {
 
 	#[test]
 	fn random() {
-		let output = execute(CODE_RANDOM, vec![], MockExt::default()).unwrap();
+		let output = execute_unchecked(CODE_RANDOM, vec![], MockExt::default()).unwrap();
 
 		// The mock ext just returns the same data that was passed as the subject.
 		assert_eq!(
@@ -1926,7 +1953,7 @@ mod tests {
 
 	#[test]
 	fn random_v1() {
-		let output = execute(CODE_RANDOM_V1, vec![], MockExt::default()).unwrap();
+		let output = execute_unchecked(CODE_RANDOM_V1, vec![], MockExt::default()).unwrap();
 
 		// The mock ext just returns the same data that was passed as the subject.
 		assert_eq!(
@@ -1941,6 +1968,63 @@ mod tests {
 				)
 					.encode()
 			},
+		);
+	}
+
+	/// The random interface is deprecated and hence new contracts using it should not deploy.
+	#[test]
+	fn random_does_not_deploy() {
+		const CODE_RANDOM_0: &str = r#"
+(module
+	(import "seal0" "seal_random" (func $seal_random (param i32 i32 i32 i32)))
+	(func (export "call"))
+	(func (export "deploy"))
+)
+	"#;
+		const CODE_RANDOM_1: &str = r#"
+(module
+	(import "seal1" "seal_random" (func $seal_random (param i32 i32 i32 i32)))
+	(func (export "call"))
+	(func (export "deploy"))
+)
+	"#;
+		const CODE_RANDOM_2: &str = r#"
+(module
+	(import "seal0" "random" (func $seal_random (param i32 i32 i32 i32)))
+	(func (export "call"))
+	(func (export "deploy"))
+)
+	"#;
+		const CODE_RANDOM_3: &str = r#"
+(module
+	(import "seal1" "random" (func $seal_random (param i32 i32 i32 i32)))
+	(func (export "call"))
+	(func (export "deploy"))
+)
+	"#;
+
+		assert_ok!(execute_unchecked(CODE_RANDOM_0, vec![], MockExt::default()));
+		assert_err!(
+			execute(CODE_RANDOM_0, vec![], MockExt::default()),
+			<Error<Test>>::CodeRejected,
+		);
+
+		assert_ok!(execute_unchecked(CODE_RANDOM_1, vec![], MockExt::default()));
+		assert_err!(
+			execute(CODE_RANDOM_1, vec![], MockExt::default()),
+			<Error<Test>>::CodeRejected,
+		);
+
+		assert_ok!(execute_unchecked(CODE_RANDOM_2, vec![], MockExt::default()));
+		assert_err!(
+			execute(CODE_RANDOM_2, vec![], MockExt::default()),
+			<Error<Test>>::CodeRejected,
+		);
+
+		assert_ok!(execute_unchecked(CODE_RANDOM_3, vec![], MockExt::default()));
+		assert_err!(
+			execute(CODE_RANDOM_3, vec![], MockExt::default()),
+			<Error<Test>>::CodeRejected,
 		);
 	}
 

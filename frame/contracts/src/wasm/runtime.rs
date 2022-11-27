@@ -1899,7 +1899,7 @@ pub mod env {
 			memory,
 			out_ptr,
 			out_len_ptr,
-			&ctx.ext.random(&subject_buf).0.encode(),
+			&ctx.ext.random(&subject_buf)?.0.encode(),
 			false,
 			already_charged,
 		)?)
@@ -1945,7 +1945,7 @@ pub mod env {
 			memory,
 			out_ptr,
 			out_len_ptr,
-			&ctx.ext.random(&subject_buf).encode(),
+			&ctx.ext.random(&subject_buf)?.encode(),
 			false,
 			already_charged,
 		)?)

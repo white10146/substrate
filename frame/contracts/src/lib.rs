@@ -83,11 +83,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "runtime-benchmarks", recursion_limit = "512")]
 
+mod address;
 #[macro_use]
 mod gas;
 mod benchmarking;
 mod exec;
 mod migration;
+mod randomness;
 mod schedule;
 mod storage;
 mod wasm;
@@ -107,7 +109,7 @@ use crate::{
 };
 use codec::{Codec, Decode, Encode, HasCompact};
 use frame_support::{
-	dispatch::{Dispatchable, GetDispatchInfo, Pays, PostDispatchInfo},
+	dispatch::{DispatchError, Dispatchable, GetDispatchInfo, Pays, PostDispatchInfo},
 	ensure,
 	traits::{
 		tokens::fungible::Inspect, ConstU32, Contains, Currency, Get, Randomness,
@@ -123,13 +125,15 @@ use pallet_contracts_primitives::{
 	StorageDeposit,
 };
 use scale_info::TypeInfo;
-use sp_runtime::traits::{Convert, Hash, Saturating, StaticLookup, TrailingZeroInput};
+use sp_runtime::traits::{Convert, Hash, Saturating, StaticLookup};
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*};
 
 pub use crate::{
+	address::{AddressGenerator, DefaultAddressGenerator},
 	exec::{Frame, VarSizedKey as StorageKey},
 	migration::Migration,
 	pallet::*,
+	randomness::{MaybeRandomness, NoRandomness, UnsafeDeprecatedRandomness},
 	schedule::{HostFnWeights, InstructionWeights, Limits, Schedule},
 	wasm::Determinism,
 };
@@ -151,49 +155,6 @@ type DebugBufferVec<T> = BoundedVec<u8, <T as Config>::MaxDebugBufferLen>;
 /// that this value makes sense for a memory location or length.
 const SENTINEL: u32 = u32::MAX;
 
-/// Provides the contract address generation method.
-///
-/// See [`DefaultAddressGenerator`] for the default implementation.
-pub trait AddressGenerator<T: Config> {
-	/// Generate the address of a contract based on the given instantiate parameters.
-	///
-	/// # Note for implementors
-	/// 1. Make sure that there are no collisions, different inputs never lead to the same output.
-	/// 2. Make sure that the same inputs lead to the same output.
-	/// 3. Changing the implementation through a runtime upgrade without a proper storage migration
-	/// would lead to catastrophic misbehavior.
-	fn generate_address(
-		deploying_address: &T::AccountId,
-		code_hash: &CodeHash<T>,
-		input_data: &[u8],
-		salt: &[u8],
-	) -> T::AccountId;
-}
-
-/// Default address generator.
-///
-/// This is the default address generator used by contract instantiation. Its result
-/// is only dependant on its inputs. It can therefore be used to reliably predict the
-/// address of a contract. This is akin to the formula of eth's CREATE2 opcode. There
-/// is no CREATE equivalent because CREATE2 is strictly more powerful.
-/// Formula:
-/// `hash("contract_addr_v1" ++ deploying_address ++ code_hash ++ input_data ++ salt)`
-pub struct DefaultAddressGenerator;
-
-impl<T: Config> AddressGenerator<T> for DefaultAddressGenerator {
-	fn generate_address(
-		deploying_address: &T::AccountId,
-		code_hash: &CodeHash<T>,
-		input_data: &[u8],
-		salt: &[u8],
-	) -> T::AccountId {
-		let entropy = (b"contract_addr_v1", deploying_address, code_hash, input_data, salt)
-			.using_encoded(T::Hashing::hash);
-		Decode::decode(&mut TrailingZeroInput::new(entropy.as_ref()))
-			.expect("infinite length input; no invalid inputs for type; qed")
-	}
-}
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -213,7 +174,7 @@ pub mod pallet {
 		type Time: Time;
 
 		/// The generator used to supply randomness to contracts through `seal_random`
-		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+		type Randomness: MaybeRandomness<Self::Hash, Self::BlockNumber>;
 
 		/// The currency in which fees are paid and contract balances are held.
 		type Currency: ReservableCurrency<Self::AccountId>
@@ -860,6 +821,12 @@ pub mod pallet {
 		/// The debug buffer size used during contract execution exceeded the limit determined by
 		/// the `MaxDebugBufferLen` pallet config parameter.
 		DebugBufferExhausted,
+		/// A contract used the random API while it was disabled by [`Config::Randomness`].
+		///
+		/// The random API was deprecated. New contracts using this API will be rejected. A chain
+		/// can also choose to disable it for pre-existing contracts. This is the error that
+		/// will be returned in that case.
+		RandomnessUnavailable,
 	}
 
 	/// A mapping from an original code hash to the original code, untouched by instrumentation.

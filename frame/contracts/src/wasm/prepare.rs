@@ -54,6 +54,14 @@ pub enum TryInstantiate {
 	Skip,
 }
 
+/// The reason why a contract is instrumented.
+enum InstrumentReason {
+	/// A new code is uploaded.
+	New,
+	/// Existing code is re-instrumented.
+	Reinstrument,
+}
+
 struct ContractModule<'a, T: Config> {
 	/// A deserialized module. The module is valid (this is Guaranteed by `new` method).
 	module: elements::Module,
@@ -301,7 +309,7 @@ impl<'a, T: Config> ContractModule<'a, T> {
 	/// `import_fn_banlist`: list of function names that are disallowed to be imported
 	fn scan_imports(
 		&self,
-		import_fn_banlist: &[&[u8]],
+		mut import_fn_banlist: impl Iterator<Item = &'static [u8]>,
 	) -> Result<Option<&MemoryType>, &'static str> {
 		let module = &self.module;
 		let import_entries = module.import_section().map(|is| is.entries()).unwrap_or(&[]);
@@ -318,7 +326,7 @@ impl<'a, T: Config> ContractModule<'a, T> {
 						return Err("module uses chain extensions but chain extensions are disabled")
 					}
 
-					if import_fn_banlist.iter().any(|f| import.field().as_bytes() == *f) {
+					if import_fn_banlist.any(|f| import.field().as_bytes() == f) {
 						return Err("module imports a banned function")
 					}
 				},
@@ -381,6 +389,7 @@ fn instrument<E, T>(
 	schedule: &Schedule<T>,
 	determinism: Determinism,
 	try_instantiate: TryInstantiate,
+	reason: InstrumentReason,
 ) -> Result<(Vec<u8>, (u32, u32)), (DispatchError, &'static str)>
 where
 	E: Environment<()>,
@@ -433,9 +442,22 @@ where
 		}
 
 		// We disallow importing `gas` function here since it is treated as implementation detail.
-		let disallowed_imports = [b"gas".as_ref()];
+		let always_banned = [b"gas".as_ref()];
+		// We deprecated the random interface. No new codes are allowed to use it.
+		let banned_for_new = [b"seal_random".as_ref(), b"random".as_ref()];
+
+		let disallowed_imports = always_banned
+			.as_ref()
+			.into_iter()
+			.chain(if matches!(reason, InstrumentReason::New) {
+				banned_for_new.as_ref()
+			} else {
+				[].as_ref()
+			})
+			.copied();
+
 		let memory_limits =
-			get_memory_limits(contract_module.scan_imports(&disallowed_imports)?, schedule)?;
+			get_memory_limits(contract_module.scan_imports(disallowed_imports)?, schedule)?;
 
 		let code = contract_module.inject_gas_metering(determinism)?.into_wasm_code()?;
 
@@ -486,8 +508,13 @@ where
 	E: Environment<()>,
 	T: Config,
 {
-	let (code, (initial, maximum)) =
-		instrument::<E, T>(original_code.as_ref(), schedule, determinism, try_instantiate)?;
+	let (code, (initial, maximum)) = instrument::<E, T>(
+		original_code.as_ref(),
+		schedule,
+		determinism,
+		try_instantiate,
+		InstrumentReason::New,
+	)?;
 
 	let original_code_len = original_code.len();
 
@@ -532,21 +559,27 @@ where
 	E: Environment<()>,
 	T: Config,
 {
-	instrument::<E, T>(original_code, schedule, determinism, TryInstantiate::Skip)
-		.map_err(|(err, msg)| {
-			log::error!(target: "runtime::contracts", "CodeRejected during reinstrument: {}", msg);
-			err
-		})
-		.map(|(code, _)| code)
+	instrument::<E, T>(
+		original_code,
+		schedule,
+		determinism,
+		TryInstantiate::Skip,
+		InstrumentReason::Reinstrument,
+	)
+	.map_err(|(err, msg)| {
+		log::error!(target: "runtime::contracts", "CodeRejected during reinstrument: {}", msg);
+		err
+	})
+	.map(|(code, _)| code)
 }
 
-/// Alternate (possibly unsafe) preparation functions used only for benchmarking.
+/// Alternate (possibly unsafe) preparation functions used only for benchmarking and testing.
 ///
 /// For benchmarking we need to construct special contracts that might not pass our
 /// sanity checks or need to skip instrumentation for correct results. We hide functions
-/// allowing this behind a feature that is only set during benchmarking to prevent usage
-/// in production code.
-#[cfg(feature = "runtime-benchmarks")]
+/// allowing this behind a feature that is only set during benchmarking or testing to
+/// prevent usage in production code.
+#[cfg(any(test, feature = "runtime-benchmarks"))]
 pub mod benchmarking {
 	use super::*;
 
@@ -557,7 +590,8 @@ pub mod benchmarking {
 		owner: AccountIdOf<T>,
 	) -> Result<PrefabWasmModule<T>, &'static str> {
 		let contract_module = ContractModule::new(&original_code, schedule)?;
-		let memory_limits = get_memory_limits(contract_module.scan_imports(&[])?, schedule)?;
+		let memory_limits =
+			get_memory_limits(contract_module.scan_imports(sp_std::iter::empty())?, schedule)?;
 		Ok(PrefabWasmModule {
 			instruction_weights_version: schedule.instruction_weights.version,
 			initial: memory_limits.0,

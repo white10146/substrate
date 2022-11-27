@@ -27,7 +27,7 @@ use crate::{
 	wasm::{Determinism, PrefabWasmModule, ReturnCode as RuntimeReturnCode},
 	weights::WeightInfo,
 	BalanceOf, Code, CodeStorage, Config, ContractInfoOf, DefaultAddressGenerator, DeletionQueue,
-	Error, Pallet, Schedule,
+	Error, Pallet, Schedule, UnsafeDeprecatedRandomness,
 };
 use assert_matches::assert_matches;
 use codec::Encode;
@@ -389,7 +389,7 @@ parameter_types! {
 
 impl Config for Test {
 	type Time = Timestamp;
-	type Randomness = Randomness;
+	type Randomness = UnsafeDeprecatedRandomness<Self, Randomness>;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;

@@ -19,13 +19,13 @@ use crate::{
 	gas::GasMeter,
 	storage::{self, Storage, WriteOutcome},
 	BalanceOf, CodeHash, Config, ContractInfo, ContractInfoOf, DebugBufferVec, Determinism, Error,
-	Event, Nonce, Pallet as Contracts, Schedule,
+	Event, MaybeRandomness, Nonce, Pallet as Contracts, Schedule,
 };
 use frame_support::{
 	crypto::ecdsa::ECDSAExt,
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Dispatchable},
 	storage::{with_transaction, TransactionOutcome},
-	traits::{Contains, Currency, ExistenceRequirement, OriginTrait, Randomness, Time},
+	traits::{Contains, Currency, ExistenceRequirement, OriginTrait, Time},
 	weights::Weight,
 	Blake2_128Concat, BoundedVec, StorageHasher,
 };
@@ -249,7 +249,10 @@ pub trait Ext: sealing::Sealed {
 	fn minimum_balance(&self) -> BalanceOf<Self::T>;
 
 	/// Returns a random number for the current block with the given subject.
-	fn random(&self, subject: &[u8]) -> (SeedOf<Self::T>, BlockNumberOf<Self::T>);
+	fn random(
+		&self,
+		subject: &[u8],
+	) -> Result<(SeedOf<Self::T>, BlockNumberOf<Self::T>), DispatchError>;
 
 	/// Deposit an event with the given topics.
 	///
@@ -1295,7 +1298,7 @@ where
 		self.top_frame().value_transferred
 	}
 
-	fn random(&self, subject: &[u8]) -> (SeedOf<T>, BlockNumberOf<T>) {
+	fn random(&self, subject: &[u8]) -> Result<(SeedOf<T>, BlockNumberOf<T>), DispatchError> {
 		T::Randomness::random(subject)
 	}
 
@@ -3424,6 +3427,35 @@ mod tests {
 				None,
 				Determinism::Deterministic
 			));
+		});
+	}
+
+	#[test]
+	fn randomness_works() {
+		let subject = b"nice subject".as_ref();
+		let code_hash = MockLoader::insert(Call, move |ctx, _| {
+			let rand = <Test as Config>::Randomness::random(subject);
+			assert_eq!(rand, ctx.ext.random(subject));
+			exec_success()
+		});
+
+		ExtBuilder::default().build().execute_with(|| {
+			let schedule = <Test as Config>::Schedule::get();
+			place_contract(&BOB, code_hash);
+
+			let mut storage_meter = storage::meter::Meter::new(&ALICE, Some(0), 0).unwrap();
+			let result = MockStack::run_call(
+				ALICE,
+				BOB,
+				&mut GasMeter::<Test>::new(GAS_LIMIT),
+				&mut storage_meter,
+				&schedule,
+				0,
+				vec![],
+				None,
+				Determinism::Deterministic,
+			);
+			assert_matches!(result, Ok(_));
 		});
 	}
 }
