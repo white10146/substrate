@@ -83,16 +83,16 @@ pub trait InherentDataProvider: Send + Sync {
 	/// Convenience function for creating [`InherentData`].
 	///
 	/// Basically maps around [`Self::provide_inherent_data`].
-	async fn create_inherent_data(&self) -> Result<InherentData, Error> {
+	fn create_inherent_data(&self) -> Result<InherentData, Error> {
 		let mut inherent_data = InherentData::new();
-		self.provide_inherent_data(&mut inherent_data).await?;
+		self.provide_inherent_data(&mut inherent_data)?;
 		Ok(inherent_data)
 	}
 
 	/// Provide inherent data that should be included in a block.
 	///
 	/// The data should be stored in the given `InherentData` structure.
-	async fn provide_inherent_data(&self, inherent_data: &mut InherentData) -> Result<(), Error>;
+	fn provide_inherent_data(&self, inherent_data: &mut InherentData) -> Result<(), Error>;
 
 	/// Convert the given encoded error to a string.
 	///
@@ -108,8 +108,8 @@ pub trait InherentDataProvider: Send + Sync {
 #[async_trait::async_trait]
 impl InherentDataProvider for Tuple {
 	for_tuples!( where #( Tuple: Send + Sync )* );
-	async fn provide_inherent_data(&self, inherent_data: &mut InherentData) -> Result<(), Error> {
-		for_tuples!( #( Tuple.provide_inherent_data(inherent_data).await?; )* );
+	fn provide_inherent_data(&self, inherent_data: &mut InherentData) -> Result<(), Error> {
+		for_tuples!( #( Tuple.provide_inherent_data(inherent_data)?; )* );
 		Ok(())
 	}
 

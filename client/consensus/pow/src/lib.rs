@@ -275,7 +275,6 @@ where
 
 		let inherent_data = inherent_data_providers
 			.create_inherent_data()
-			.await
 			.map_err(|e| Error::CreateInherents(e))?;
 
 		let inherent_res = self
@@ -586,7 +585,7 @@ where
 				},
 			};
 
-			let inherent_data = match inherent_data_providers.create_inherent_data().await {
+			let inherent_data = match inherent_data_providers.create_inherent_data() {
 				Ok(r) => r,
 				Err(e) => {
 					warn!(

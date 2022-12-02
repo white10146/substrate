@@ -228,7 +228,7 @@ impl sp_std::ops::Deref for InherentDataProvider {
 #[cfg(feature = "std")]
 #[async_trait::async_trait]
 impl sp_inherents::InherentDataProvider for InherentDataProvider {
-	async fn provide_inherent_data(
+	fn provide_inherent_data(
 		&self,
 		inherent_data: &mut InherentData,
 	) -> Result<(), sp_inherents::Error> {
