@@ -694,7 +694,7 @@ pub use frame_support_procedural::crate_to_crate_version;
 #[macro_export]
 macro_rules! fail {
 	( $y:expr ) => {{
-		return Err($y.into())
+		return Err($y.into());
 	}};
 }
 
@@ -2744,3 +2744,5 @@ pub mod pallet_macros {
 		type_value, unbounded, validate_unsigned, weight, whitelist_storage,
 	};
 }
+
+pub use frame_support_procedural::benchmark;
