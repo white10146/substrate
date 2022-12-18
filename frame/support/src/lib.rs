@@ -2746,3 +2746,5 @@ pub mod pallet_macros {
 }
 
 pub use frame_support_procedural::{benchmark, benchmarks};
+
+pub struct Linear<const A: u32, const B: u32>;
