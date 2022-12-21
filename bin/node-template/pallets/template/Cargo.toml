@@ -17,14 +17,14 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 	"derive",
 ] }
 scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
-frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true, path = "../../../../frame/benchmarking" }
-frame-support = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/support" }
-frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/system" }
+frame-benchmarking = { version = "9.0.0", default-features = false, optional = true, path = "../../../../frame/benchmarking" }
+frame-support = { version = "9.0.0", default-features = false, path = "../../../../frame/support" }
+frame-system = { version = "9.0.0", default-features = false, path = "../../../../frame/system" }
 
 [dev-dependencies]
-sp-core = { version = "7.0.0", default-features = false, path = "../../../../primitives/core" }
-sp-io = { version = "7.0.0", default-features = false, path = "../../../../primitives/io" }
-sp-runtime = { version = "7.0.0", default-features = false, path = "../../../../primitives/runtime" }
+sp-core = { version = "10.0.0", default-features = false, path = "../../../../primitives/core" }
+sp-io = { version = "11.0.0", default-features = false, path = "../../../../primitives/io" }
+sp-runtime = { version = "11.0.0", default-features = false, path = "../../../../primitives/runtime" }
 
 [features]
 default = ["std"]

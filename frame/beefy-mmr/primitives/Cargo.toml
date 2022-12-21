@@ -1,6 +1,6 @@
 [package]
 name = "beefy-merkle-tree"
-version = "4.0.0-dev"
+version = "7.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -12,9 +12,9 @@ homepage = "https://substrate.io"
 array-bytes = { version = "4.1", optional = true }
 log = { version = "0.4", default-features = false, optional = true }
 
-beefy-primitives = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/beefy", package = "sp-beefy" }
-sp-api = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/api" }
-sp-runtime = { version = "7.0.0", default-features = false, path = "../../../primitives/runtime" }
+beefy-primitives = { version = "7.0.0", default-features = false, path = "../../../primitives/beefy", package = "sp-beefy" }
+sp-api = { version = "7.0.0", default-features = false, path = "../../../primitives/api" }
+sp-runtime = { version = "11.0.0", default-features = false, path = "../../../primitives/runtime" }
 
 [dev-dependencies]
 array-bytes = "4.1"

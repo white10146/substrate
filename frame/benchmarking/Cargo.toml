@@ -1,6 +1,6 @@
 [package]
 name = "frame-benchmarking"
-version = "4.0.0-dev"
+version = "9.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -19,21 +19,21 @@ log = { version = "0.4.17", default-features = false }
 paste = "1.0"
 scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
 serde = { version = "1.0.136", optional = true }
-frame-support = { version = "4.0.0-dev", default-features = false, path = "../support" }
-frame-system = { version = "4.0.0-dev", default-features = false, path = "../system" }
-sp-api = { version = "4.0.0-dev", default-features = false, path = "../../primitives/api" }
-sp-application-crypto = { version = "7.0.0", default-features = false, path = "../../primitives/application-crypto" }
-sp-core = { version = "7.0.0", default-features = false, path = "../../primitives/core" }
-sp-io = { version = "7.0.0", default-features = false, path = "../../primitives/io" }
-sp-runtime = { version = "7.0.0", default-features = false, path = "../../primitives/runtime" }
-sp-runtime-interface = { version = "7.0.0", default-features = false, path = "../../primitives/runtime-interface" }
-sp-std = { version = "5.0.0", default-features = false, path = "../../primitives/std" }
-sp-storage = { version = "7.0.0", default-features = false, path = "../../primitives/storage" }
+frame-support = { version = "9.0.0", default-features = false, path = "../support" }
+frame-system = { version = "9.0.0", default-features = false, path = "../system" }
+sp-api = { version = "7.0.0", default-features = false, path = "../../primitives/api" }
+sp-application-crypto = { version = "11.0.0", default-features = false, path = "../../primitives/application-crypto" }
+sp-core = { version = "10.0.0", default-features = false, path = "../../primitives/core" }
+sp-io = { version = "11.0.0", default-features = false, path = "../../primitives/io" }
+sp-runtime = { version = "11.0.0", default-features = false, path = "../../primitives/runtime" }
+sp-runtime-interface = { version = "9.0.0", default-features = false, path = "../../primitives/runtime-interface" }
+sp-std = { version = "6.0.0", default-features = false, path = "../../primitives/std" }
+sp-storage = { version = "9.0.0", default-features = false, path = "../../primitives/storage" }
 
 [dev-dependencies]
 array-bytes = "4.1"
 rusty-fork = { version = "0.3.0", default-features = false }
-sp-keystore = { version = "0.13.0", path = "../../primitives/keystore" }
+sp-keystore = { version = "0.16.0", path = "../../primitives/keystore" }
 
 [features]
 default = ["std"]
