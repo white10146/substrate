@@ -29,6 +29,9 @@ mod keyword {
 	syn::custom_keyword!(storage_prefix);
 	syn::custom_keyword!(unbounded);
 	syn::custom_keyword!(whitelist_storage);
+	syn::custom_keyword!(pov_estimation);
+	syn::custom_keyword!(MaxEncodedLen);
+	syn::custom_keyword!(Measured);
 	syn::custom_keyword!(OptionQuery);
 	syn::custom_keyword!(ResultQuery);
 	syn::custom_keyword!(ValueQuery);
@@ -39,11 +42,20 @@ mod keyword {
 /// * `#[pallet::storage_prefix = "CustomName"]`
 /// * `#[pallet::unbounded]`
 /// * `#[pallet::whitelist_storage]
+/// * `#[pallet::pov_estimation = MaxEncodedLen]
 pub enum PalletStorageAttr {
 	Getter(syn::Ident, proc_macro2::Span),
 	StorageName(syn::LitStr, proc_macro2::Span),
 	Unbounded(proc_macro2::Span),
 	WhitelistStorage(proc_macro2::Span),
+	PovEstimation(PovEstimationAttr, proc_macro2::Span),
+}
+
+/// How the PoV size should be estimated.
+#[derive(PartialEq, Debug)]
+pub enum PovEstimationAttr {
+	MaxEncodedLen,
+	Measured,
 }
 
 impl PalletStorageAttr {
@@ -52,7 +64,8 @@ impl PalletStorageAttr {
 			Self::Getter(_, span) |
 			Self::StorageName(_, span) |
 			Self::Unbounded(span) |
-			Self::WhitelistStorage(span) => *span,
+			Self::WhitelistStorage(span) |
+			Self::PovEstimation(_, span) => *span,
 		}
 	}
 }
@@ -93,6 +106,26 @@ impl syn::parse::Parse for PalletStorageAttr {
 		} else if lookahead.peek(keyword::whitelist_storage) {
 			content.parse::<keyword::whitelist_storage>()?;
 			Ok(Self::WhitelistStorage(attr_span))
+		} else if lookahead.peek(keyword::pov_estimation) {
+			content.parse::<keyword::pov_estimation>()?;
+			content.parse::<syn::Token![=]>()?;
+			let lookahead = content.lookahead1();
+
+			if lookahead.peek(keyword::MaxEncodedLen) {
+				content.parse::<keyword::MaxEncodedLen>().expect("Peeked this");
+				Ok(Self::PovEstimation(PovEstimationAttr::MaxEncodedLen, attr_span))
+			} else if lookahead.peek(keyword::Measured) {
+				content.parse::<keyword::Measured>().expect("Peeked this");
+				Ok(Self::PovEstimation(PovEstimationAttr::Measured, attr_span))
+			} else {
+				Err(syn::Error::new(
+					attr_span,
+					format!(
+						"Invalid value for the pov_estimation attribute: {:?}",
+						lookahead.error()
+					),
+				))
+			}
 		} else {
 			Err(lookahead.error())
 		}
@@ -104,14 +137,16 @@ struct PalletStorageAttrInfo {
 	rename_as: Option<syn::LitStr>,
 	unbounded: bool,
 	whitelisted: bool,
+	pov_estimation: Option<PovEstimationAttr>,
 }
 
 impl PalletStorageAttrInfo {
 	fn from_attrs(attrs: Vec<PalletStorageAttr>) -> syn::Result<Self> {
 		let mut getter = None;
 		let mut rename_as = None;
-		let mut unbounded = false;
-		let mut whitelisted = false;
+		let mut pov_estimation = None;
+		let (mut unbounded, mut whitelisted) = (false, false);
+
 		for attr in attrs {
 			match attr {
 				PalletStorageAttr::Getter(ident, ..) if getter.is_none() => getter = Some(ident),
@@ -119,6 +154,8 @@ impl PalletStorageAttrInfo {
 					rename_as = Some(name),
 				PalletStorageAttr::Unbounded(..) if !unbounded => unbounded = true,
 				PalletStorageAttr::WhitelistStorage(..) if !whitelisted => whitelisted = true,
+				PalletStorageAttr::PovEstimation(mode, ..) if pov_estimation.is_none() =>
+					pov_estimation = Some(mode),
 				attr =>
 					return Err(syn::Error::new(
 						attr.attr_span(),
@@ -127,7 +164,7 @@ impl PalletStorageAttrInfo {
 			}
 		}
 
-		Ok(PalletStorageAttrInfo { getter, rename_as, unbounded, whitelisted })
+		Ok(PalletStorageAttrInfo { getter, rename_as, unbounded, whitelisted, pov_estimation })
 	}
 }
 
@@ -185,6 +222,8 @@ pub struct StorageDef {
 	pub unbounded: bool,
 	/// Whether or not reads to this storage key will be ignored by benchmarking
 	pub whitelisted: bool,
+	/// How the proof size should be calculated by the PoV benchmarking.
+	pub pov_estimation: Option<PovEstimationAttr>,
 }
 
 /// The parsed generic from the
@@ -687,9 +726,12 @@ impl StorageDef {
 		};
 
 		let attrs: Vec<PalletStorageAttr> = helper::take_item_pallet_attrs(&mut item.attrs)?;
-		let PalletStorageAttrInfo { getter, rename_as, mut unbounded, whitelisted } =
+		let PalletStorageAttrInfo { getter, rename_as, mut unbounded, whitelisted, pov_estimation } =
 			PalletStorageAttrInfo::from_attrs(attrs)?;
 
+		if unbounded && pov_estimation == Some(PovEstimationAttr::MaxEncodedLen) {
+			return Err(syn::Error::new(item.span(), "Storage item cannot be 'unbounded' ahd have 'MaxEncodedLen' proof size at the same time."))
+		}
 		// set all storages to be unbounded if dev_mode is enabled
 		unbounded |= dev_mode;
 		let cfg_attrs = helper::get_item_cfg_attrs(&item.attrs);
@@ -832,6 +874,7 @@ impl StorageDef {
 			named_generics,
 			unbounded,
 			whitelisted,
+			pov_estimation,
 		})
 	}
 }
