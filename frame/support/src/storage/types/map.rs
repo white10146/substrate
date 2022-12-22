@@ -22,7 +22,8 @@ use crate::{
 	metadata::{StorageEntryMetadata, StorageEntryType},
 	storage::{
 		types::{OptionQuery, QueryKindTrait, StorageEntryMetadataBuilder},
-		KeyLenOf, StorageAppend, StorageDecodeLength, StoragePrefixedMap, StorageTryAppend,
+		KeyLenOf, PovEstimationMode, StorageAppend, StorageDecodeLength, StoragePrefixedMap,
+		StorageTryAppend,
 	},
 	traits::{Get, GetDefault, StorageInfo, StorageInstance},
 	StorageHasher, Twox128,
@@ -52,10 +53,22 @@ pub struct StorageMap<
 	QueryKind = OptionQuery,
 	OnEmpty = GetDefault,
 	MaxValues = GetDefault,
->(core::marker::PhantomData<(Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues)>);
+	PovEstimation = GetDefault,
+>(
+	core::marker::PhantomData<(
+		Prefix,
+		Hasher,
+		Key,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	)>,
+);
 
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues> Get<u32>
-	for KeyLenOf<StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation> Get<u32>
+	for KeyLenOf<StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher,
@@ -69,9 +82,9 @@ where
 	}
 }
 
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	crate::storage::generator::StorageMap<Key, Value>
-	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher,
@@ -97,8 +110,9 @@ where
 	}
 }
 
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues> StoragePrefixedMap<Value>
-	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StoragePrefixedMap<Value>
+	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher,
@@ -116,8 +130,8 @@ where
 	}
 }
 
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
-	StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher,
@@ -340,8 +354,8 @@ where
 	}
 }
 
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
-	StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher + crate::ReversibleStorageHasher,
@@ -398,8 +412,9 @@ where
 	}
 }
 
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues> StorageEntryMetadataBuilder
-	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StorageEntryMetadataBuilder
+	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher,
@@ -428,8 +443,9 @@ where
 	}
 }
 
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues> crate::traits::StorageInfoTrait
-	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	crate::traits::StorageInfoTrait
+	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher,
@@ -438,6 +454,7 @@ where
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: Get<QueryKind::Query> + 'static,
 	MaxValues: Get<Option<u32>>,
+	PovEstimation: Get<Option<PovEstimationMode>>,
 {
 	fn storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -450,14 +467,15 @@ where
 					.saturating_add(Value::max_encoded_len())
 					.saturated_into(),
 			),
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }
 
 /// It doesn't require to implement `MaxEncodedLen` and give no information for `max_size`.
-impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	crate::traits::PartialStorageInfoTrait
-	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues>
+	for StorageMap<Prefix, Hasher, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Hasher: crate::hash::StorageHasher,
@@ -466,6 +484,7 @@ where
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: Get<QueryKind::Query> + 'static,
 	MaxValues: Get<Option<u32>>,
+	PovEstimation: Get<Option<PovEstimationMode>>,
 {
 	fn partial_storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -474,6 +493,7 @@ where
 			prefix: Self::final_prefix().to_vec(),
 			max_values: MaxValues::get(),
 			max_size: None,
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }
@@ -497,7 +517,7 @@ mod test {
 	}
 
 	struct ADefault;
-	impl crate::traits::Get<u32> for ADefault {
+	impl Get<u32> for ADefault {
 		fn get() -> u32 {
 			97
 		}

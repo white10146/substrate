@@ -22,7 +22,7 @@ use crate::{
 	storage::{
 		generator::StorageValue as StorageValueT,
 		types::{OptionQuery, QueryKindTrait, StorageEntryMetadataBuilder},
-		StorageAppend, StorageDecodeLength, StorageTryAppend,
+		PovEstimationMode, StorageAppend, StorageDecodeLength, StorageTryAppend,
 	},
 	traits::{GetDefault, StorageInfo, StorageInstance},
 };
@@ -36,12 +36,17 @@ use sp_std::prelude::*;
 /// ```nocompile
 /// Twox128(Prefix::pallet_prefix()) ++ Twox128(Prefix::STORAGE_PREFIX)
 /// ```
-pub struct StorageValue<Prefix, Value, QueryKind = OptionQuery, OnEmpty = GetDefault>(
-	core::marker::PhantomData<(Prefix, Value, QueryKind, OnEmpty)>,
-);
+pub struct StorageValue<
+	Prefix,
+	Value,
+	QueryKind = OptionQuery,
+	OnEmpty = GetDefault,
+	PovEstimation = GetDefault,
+>(core::marker::PhantomData<(Prefix, Value, QueryKind, OnEmpty, PovEstimation)>);
 
-impl<Prefix, Value, QueryKind, OnEmpty> crate::storage::generator::StorageValue<Value>
-	for StorageValue<Prefix, Value, QueryKind, OnEmpty>
+impl<Prefix, Value, QueryKind, OnEmpty, PovEstimation>
+	crate::storage::generator::StorageValue<Value>
+	for StorageValue<Prefix, Value, QueryKind, OnEmpty, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Value: FullCodec,
@@ -63,7 +68,8 @@ where
 	}
 }
 
-impl<Prefix, Value, QueryKind, OnEmpty> StorageValue<Prefix, Value, QueryKind, OnEmpty>
+impl<Prefix, Value, QueryKind, OnEmpty, PovEstimation>
+	StorageValue<Prefix, Value, QueryKind, OnEmpty, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Value: FullCodec,
@@ -201,8 +207,8 @@ where
 	}
 }
 
-impl<Prefix, Value, QueryKind, OnEmpty> StorageEntryMetadataBuilder
-	for StorageValue<Prefix, Value, QueryKind, OnEmpty>
+impl<Prefix, Value, QueryKind, OnEmpty, PovEstimation> StorageEntryMetadataBuilder
+	for StorageValue<Prefix, Value, QueryKind, OnEmpty, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Value: FullCodec + scale_info::StaticTypeInfo,
@@ -224,13 +230,14 @@ where
 	}
 }
 
-impl<Prefix, Value, QueryKind, OnEmpty> crate::traits::StorageInfoTrait
-	for StorageValue<Prefix, Value, QueryKind, OnEmpty>
+impl<Prefix, Value, QueryKind, OnEmpty, PovEstimation> crate::traits::StorageInfoTrait
+	for StorageValue<Prefix, Value, QueryKind, OnEmpty, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Value: FullCodec + MaxEncodedLen,
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: crate::traits::Get<QueryKind::Query> + 'static,
+	PovEstimation: crate::traits::Get<Option<PovEstimationMode>>,
 {
 	fn storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -239,18 +246,20 @@ where
 			prefix: Self::hashed_key().to_vec(),
 			max_values: Some(1),
 			max_size: Some(Value::max_encoded_len().saturated_into()),
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }
 
 /// It doesn't require to implement `MaxEncodedLen` and give no information for `max_size`.
-impl<Prefix, Value, QueryKind, OnEmpty> crate::traits::PartialStorageInfoTrait
-	for StorageValue<Prefix, Value, QueryKind, OnEmpty>
+impl<Prefix, Value, QueryKind, OnEmpty, PovEstimation> crate::traits::PartialStorageInfoTrait
+	for StorageValue<Prefix, Value, QueryKind, OnEmpty, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Value: FullCodec,
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: crate::traits::Get<QueryKind::Query> + 'static,
+	PovEstimation: crate::traits::Get<Option<PovEstimationMode>>,
 {
 	fn partial_storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -259,6 +268,7 @@ where
 			prefix: Self::hashed_key().to_vec(),
 			max_values: Some(1),
 			max_size: None,
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }

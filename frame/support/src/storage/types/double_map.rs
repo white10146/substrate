@@ -22,7 +22,8 @@ use crate::{
 	metadata::{StorageEntryMetadata, StorageEntryType},
 	storage::{
 		types::{OptionQuery, QueryKindTrait, StorageEntryMetadataBuilder},
-		KeyLenOf, StorageAppend, StorageDecodeLength, StoragePrefixedMap, StorageTryAppend,
+		KeyLenOf, PovEstimationMode, StorageAppend, StorageDecodeLength, StoragePrefixedMap,
+		StorageTryAppend,
 	},
 	traits::{Get, GetDefault, StorageInfo, StorageInstance},
 	StorageHasher, Twox128,
@@ -57,6 +58,7 @@ pub struct StorageDoubleMap<
 	QueryKind = OptionQuery,
 	OnEmpty = GetDefault,
 	MaxValues = GetDefault,
+	PovEstimation = GetDefault,
 >(
 	core::marker::PhantomData<(
 		Prefix,
@@ -68,10 +70,12 @@ pub struct StorageDoubleMap<
 		QueryKind,
 		OnEmpty,
 		MaxValues,
+		PovEstimation,
 	)>,
 );
 
-impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues> Get<u32>
+impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	Get<u32>
 	for KeyLenOf<
 		StorageDoubleMap<
 			Prefix,
@@ -83,6 +87,7 @@ impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
 			QueryKind,
 			OnEmpty,
 			MaxValues,
+			PovEstimation,
 		>,
 	> where
 	Prefix: StorageInstance,
@@ -100,10 +105,20 @@ impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
 	}
 }
 
-impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	crate::storage::generator::StorageDoubleMap<Key1, Key2, Value>
-	for StorageDoubleMap<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-where
+	for StorageDoubleMap<
+		Prefix,
+		Hasher1,
+		Key1,
+		Hasher2,
+		Key2,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	> where
 	Prefix: StorageInstance,
 	Hasher1: crate::hash::StorageHasher,
 	Hasher2: crate::hash::StorageHasher,
@@ -131,10 +146,20 @@ where
 	}
 }
 
-impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	StoragePrefixedMap<Value>
-	for StorageDoubleMap<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-where
+	for StorageDoubleMap<
+		Prefix,
+		Hasher1,
+		Key1,
+		Hasher2,
+		Key2,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	> where
 	Prefix: StorageInstance,
 	Hasher1: crate::hash::StorageHasher,
 	Hasher2: crate::hash::StorageHasher,
@@ -153,9 +178,19 @@ where
 	}
 }
 
-impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-	StorageDoubleMap<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-where
+impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StorageDoubleMap<
+		Prefix,
+		Hasher1,
+		Key1,
+		Hasher2,
+		Key2,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	> where
 	Prefix: StorageInstance,
 	Hasher1: crate::hash::StorageHasher,
 	Hasher2: crate::hash::StorageHasher,
@@ -516,9 +551,19 @@ where
 	}
 }
 
-impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-	StorageDoubleMap<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-where
+impl<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StorageDoubleMap<
+		Prefix,
+		Hasher1,
+		Key1,
+		Hasher2,
+		Key2,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	> where
 	Prefix: StorageInstance,
 	Hasher1: crate::hash::StorageHasher + crate::ReversibleStorageHasher,
 	Hasher2: crate::hash::StorageHasher + crate::ReversibleStorageHasher,
@@ -642,10 +687,20 @@ where
 	}
 }
 
-impl<Prefix, Hasher1, Hasher2, Key1, Key2, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher1, Hasher2, Key1, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	StorageEntryMetadataBuilder
-	for StorageDoubleMap<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-where
+	for StorageDoubleMap<
+		Prefix,
+		Hasher1,
+		Key1,
+		Hasher2,
+		Key2,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	> where
 	Prefix: StorageInstance,
 	Hasher1: crate::hash::StorageHasher,
 	Hasher2: crate::hash::StorageHasher,
@@ -675,10 +730,20 @@ where
 	}
 }
 
-impl<Prefix, Hasher1, Hasher2, Key1, Key2, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher1, Hasher2, Key1, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	crate::traits::StorageInfoTrait
-	for StorageDoubleMap<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-where
+	for StorageDoubleMap<
+		Prefix,
+		Hasher1,
+		Key1,
+		Hasher2,
+		Key2,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	> where
 	Prefix: StorageInstance,
 	Hasher1: crate::hash::StorageHasher,
 	Hasher2: crate::hash::StorageHasher,
@@ -688,6 +753,7 @@ where
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: Get<QueryKind::Query> + 'static,
 	MaxValues: Get<Option<u32>>,
+	PovEstimation: Get<Option<PovEstimationMode>>,
 {
 	fn storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -701,15 +767,26 @@ where
 					.saturating_add(Value::max_encoded_len())
 					.saturated_into(),
 			),
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }
 
 /// It doesn't require to implement `MaxEncodedLen` and give no information for `max_size`.
-impl<Prefix, Hasher1, Hasher2, Key1, Key2, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Hasher1, Hasher2, Key1, Key2, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	crate::traits::PartialStorageInfoTrait
-	for StorageDoubleMap<Prefix, Hasher1, Key1, Hasher2, Key2, Value, QueryKind, OnEmpty, MaxValues>
-where
+	for StorageDoubleMap<
+		Prefix,
+		Hasher1,
+		Key1,
+		Hasher2,
+		Key2,
+		Value,
+		QueryKind,
+		OnEmpty,
+		MaxValues,
+		PovEstimation,
+	> where
 	Prefix: StorageInstance,
 	Hasher1: crate::hash::StorageHasher,
 	Hasher2: crate::hash::StorageHasher,
@@ -719,6 +796,7 @@ where
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: Get<QueryKind::Query> + 'static,
 	MaxValues: Get<Option<u32>>,
+	PovEstimation: Get<Option<PovEstimationMode>>,
 {
 	fn partial_storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -727,6 +805,7 @@ where
 			prefix: Self::final_prefix().to_vec(),
 			max_values: MaxValues::get(),
 			max_size: None,
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }
@@ -750,7 +829,7 @@ mod test {
 	}
 
 	struct ADefault;
-	impl crate::traits::Get<u32> for ADefault {
+	impl Get<u32> for ADefault {
 		fn get() -> u32 {
 			97
 		}

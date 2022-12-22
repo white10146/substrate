@@ -25,7 +25,8 @@ use crate::{
 			EncodeLikeTuple, HasKeyPrefix, HasReversibleKeyPrefix, OptionQuery, QueryKindTrait,
 			StorageEntryMetadataBuilder, TupleToEncodedIter,
 		},
-		KeyGenerator, PrefixIterator, StorageAppend, StorageDecodeLength, StoragePrefixedMap,
+		KeyGenerator, PovEstimationMode, PrefixIterator, StorageAppend, StorageDecodeLength,
+		StoragePrefixedMap,
 	},
 	traits::{Get, GetDefault, StorageInfo, StorageInstance},
 };
@@ -58,11 +59,12 @@ pub struct StorageNMap<
 	QueryKind = OptionQuery,
 	OnEmpty = GetDefault,
 	MaxValues = GetDefault,
->(core::marker::PhantomData<(Prefix, Key, Value, QueryKind, OnEmpty, MaxValues)>);
+	PovEstimation = GetDefault,
+>(core::marker::PhantomData<(Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation)>);
 
-impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 	crate::storage::generator::StorageNMap<Key, Value>
-	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Key: super::key::KeyGenerator,
@@ -86,8 +88,9 @@ where
 	}
 }
 
-impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues> crate::storage::StoragePrefixedMap<Value>
-	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	crate::storage::StoragePrefixedMap<Value>
+	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Key: super::key::KeyGenerator,
@@ -104,8 +107,8 @@ where
 	}
 }
 
-impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
-	StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Key: super::key::KeyGenerator,
@@ -405,8 +408,8 @@ where
 	}
 }
 
-impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
-	StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Key: super::key::ReversibleKeyGenerator,
@@ -540,8 +543,8 @@ where
 	}
 }
 
-impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues> StorageEntryMetadataBuilder
-	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation> StorageEntryMetadataBuilder
+	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Key: super::key::KeyGenerator,
@@ -569,8 +572,9 @@ where
 	}
 }
 
-impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues> crate::traits::StorageInfoTrait
-	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	crate::traits::StorageInfoTrait
+	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Key: super::key::KeyGenerator + super::key::KeyGeneratorMaxEncodedLen,
@@ -578,6 +582,7 @@ where
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: Get<QueryKind::Query> + 'static,
 	MaxValues: Get<Option<u32>>,
+	PovEstimation: Get<Option<PovEstimationMode>>,
 {
 	fn storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -590,13 +595,15 @@ where
 					.saturating_add(Value::max_encoded_len())
 					.saturated_into(),
 			),
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }
 
 /// It doesn't require to implement `MaxEncodedLen` and give no information for `max_size`.
-impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues> crate::traits::PartialStorageInfoTrait
-	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues>
+impl<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
+	crate::traits::PartialStorageInfoTrait
+	for StorageNMap<Prefix, Key, Value, QueryKind, OnEmpty, MaxValues, PovEstimation>
 where
 	Prefix: StorageInstance,
 	Key: super::key::KeyGenerator,
@@ -604,6 +611,7 @@ where
 	QueryKind: QueryKindTrait<Value, OnEmpty>,
 	OnEmpty: Get<QueryKind::Query> + 'static,
 	MaxValues: Get<Option<u32>>,
+	PovEstimation: Get<Option<PovEstimationMode>>,
 {
 	fn partial_storage_info() -> Vec<StorageInfo> {
 		vec![StorageInfo {
@@ -612,6 +620,7 @@ where
 			prefix: Self::final_prefix().to_vec(),
 			max_values: MaxValues::get(),
 			max_size: None,
+			pov_estimation: PovEstimation::get(),
 		}]
 	}
 }
@@ -634,7 +643,7 @@ mod test {
 	}
 
 	struct ADefault;
-	impl crate::traits::Get<u32> for ADefault {
+	impl Get<u32> for ADefault {
 		fn get() -> u32 {
 			98
 		}

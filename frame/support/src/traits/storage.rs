@@ -65,6 +65,8 @@ pub struct StorageInfo {
 	pub max_values: Option<u32>,
 	/// The maximum size of key/values in the storage, or none if no maximum specified.
 	pub max_size: Option<u32>,
+	/// How the PoV size of this type should be estimated.
+	pub pov_estimation: Option<crate::storage::PovEstimationMode>,
 }
 
 /// A trait to give information about storage.

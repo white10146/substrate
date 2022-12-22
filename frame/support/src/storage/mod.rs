@@ -25,7 +25,7 @@ use crate::{
 	},
 };
 use codec::{Decode, Encode, EncodeLike, FullCodec, FullEncode};
-use sp_core::storage::ChildInfo;
+use sp_core::{storage::ChildInfo, Get};
 use sp_runtime::generic::{Digest, DigestItem};
 use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData, prelude::*};
 
@@ -1476,6 +1476,40 @@ pub fn storage_prefix(pallet_name: &[u8], storage_name: &[u8]) -> [u8; 32] {
 	final_key
 }
 
+/// How the PoV size of a storage item should be estimated.
+#[derive(codec::Encode, codec::Decode, crate::RuntimeDebug, Eq, PartialEq, Clone)]
+pub enum PovEstimationMode {
+	/// Use the maximal encoded length as provided by [`codec::MaxEncodedLen`].
+	MaxEncodedLen,
+	/// Measure the accessed value size in the pallet benchmarking.
+	Measured,
+}
+
+/// Returns `Some(`[`PovEstimationMode::MaxEncodedLen`]`)` through its [`Get`] implementation.
+pub struct PovEstimationMel;
+impl Get<Option<PovEstimationMode>> for PovEstimationMel {
+	fn get() -> Option<PovEstimationMode> {
+		Some(PovEstimationMode::MaxEncodedLen)
+	}
+}
+
+/// Returns `Some(`[`PovEstimationMode::Measured`]`)` through its [`Get`]
+/// implementation.
+pub struct PovEstimationMeasured;
+impl Get<Option<PovEstimationMode>> for PovEstimationMeasured {
+	fn get() -> Option<PovEstimationMode> {
+		Some(PovEstimationMode::Measured)
+	}
+}
+
+/// Returns [`None`] through its [`Get`] implementation.
+pub struct PovEstimationNone;
+impl Get<Option<PovEstimationMode>> for PovEstimationNone {
+	fn get() -> Option<PovEstimationMode> {
+		None
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
@@ -1855,5 +1889,12 @@ mod test {
 
 			assert_eq!(FooSet::decode_len().unwrap(), 7);
 		});
+	}
+
+	#[test]
+	fn pov_estimation_mode_works() {
+		assert_eq!(PovEstimationMel::get(), Some(PovEstimationMode::MaxEncodedLen));
+		assert_eq!(PovEstimationMeasured::get(), Some(PovEstimationMode::Measured));
+		assert_eq!(PovEstimationNone::get(), None);
 	}
 }
